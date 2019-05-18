@@ -3,18 +3,22 @@
 base="/etc/letsencrypt/"
 rsa_key_size=4096
 
+stringToSearch="SSL domain names"
+prefix="server_name"
+confDirectory="/etc/nginx/conf.d/*"
+
 prepareNginx () {
     
-    declare -a domains=("${!1}")
-    echo "### Domain name $domains"
+    declare -a domain=$1
+    echo "### Domain name $domain"
 
-    live="$base/live/$domains"
-    renewal="$base/renewal/$domains.conf"
-    archive="$base/archive/$domains"
-    todelete="$base/todelete-$domains"
+    live="$base/live/$domain"
+    renewal="$base/renewal/$domain.conf"
+    archive="$base/archive/$domain"
+    todelete="$base/todelete-$domain"
 
     if [ ! -d "$live" ]; then
-        echo "### Sll prepartion for $domains"
+        echo "### Sll prepartion for $domain"
 
         echo "### Creating $live ..."
         mkdir -p $live
@@ -29,7 +33,7 @@ prepareNginx () {
         
         touch $todelete
     else  
-        echo "$domains exist already."
+        echo "$domain exist already."
     fi
     
 }
@@ -37,12 +41,12 @@ prepareNginx () {
 clearKeys () {
     echo "### Clean dummies"
     
-    declare -a domains=("${!1}")
+    local domain=$1
 
-    live="$base/live/$domains"
-    archive="$base/archive/$domains"
-    renewal="$base/renewal/$domains.conf"
-    todelete="$base/todelete-$domains"
+    live="$base/live/$domain"
+    archive="$base/archive/$domain"
+    renewal="$base/renewal/$domain.conf"
+    todelete="$base/todelete-$domain"
 
     if [ -f "$todelete" ]; then
         echo "### Cleaning dummies ..."
@@ -51,7 +55,7 @@ clearKeys () {
         rm -Rf $renewal
         echo "### Dummies cleaned."
     else  
-        echo "$domains had no dummies."
+        echo "$domain had no dummies."
     fi
      
 }
@@ -61,19 +65,22 @@ registerSSL () {
     email=$EMAIL
     staging=$STAGING
 
-    declare -a domains=("${!1}")
+    local domain=$1
+    local domains=$2
 
-    live="$base/live/$domains"
-    archive="$base/archive/$domains"
-    renewal="$base/renewal/$domains.conf"
-    todelete="$base/todelete-$domains"
+    live="$base/live/$domain"
+    archive="$base/archive/$domain"
+    renewal="$base/renewal/$domain.conf"
+    todelete="$base/todelete-$domain"
 
     if [ -f "$todelete" ]; then
-        echo "### Requesting Let's Encrypt certificate for $domains ..."
+        echo "### Requesting Let's Encrypt certificate for $domain ..."
+
+        IFS=' ' read -ra LIST_DOMAIN_NAME <<< "$domains"
 
         domain_args=""
-        for domain in "${!1}"; do
-          domain_args="$domain_args -d $domain"
+        for domain_name in "${LIST_DOMAIN_NAME[@]}"; do
+          domain_args="$domain_args -d $domain_name"
         done
 
 
@@ -96,7 +103,7 @@ registerSSL () {
             --rsa-key-size $rsa_key_size \
             --agree-tos
         
-        echo "### Cerbot laucnhed."
+        echo "### Cerbot launched."
 
         echo "### Cleanup ..."
         rm "$todelete"
@@ -113,39 +120,39 @@ registerSSL () {
 
 afunc(){
 
-   ### LIST DOMAIN HERE
-
-
-   #local domain1=(
-   #     "superhero.philippeduval.ca"
-   #     "www.superhero.philippeduval.ca"
-   #)
-
-
-   local domain1=(
-        "superhero.philippeduval.ca"
-    )
-
-    local domain2=(
-        "jenkins.philippeduval.ca"
-    )
-
-     local domain3=(
-        "dockertest.philippeduval.ca"
-    )
 
     echo "### Creating directories for certbox ..."
     mkdir -p /var/www/certbot
     chmod -R 777 /var/www/certbot
     echo "### Directories created."
 
-    ### REGISTER DOMAIN HERE
-    ### REGISTER DOMAIN HERE
-    ### REGISTER DOMAIN HERE
-    prepareNginx domain1[@]
-    prepareNginx domain2[@]
-    prepareNginx domain3[@]
-   
+   ### LIST DOMAIN HERE
+   local domains=""
+
+    for file in $(grep -lir "$stringToSearch" $confDirectory)
+    do
+        domain=$(awk "/$stringToSearch/{getline; print}" $file)
+        domain=$(echo $domain | xargs)
+        domain=${domain#$prefix}
+        domain=${domain%?}
+        domains+="$domain;"
+    done
+
+    domains=${domains%?}
+
+    IFS=';' read -ra domain_names <<< "$domains"
+    
+    for domain_name in "${domain_names[@]}"; do
+        echo "Domaine : $domain_name"
+
+        IFS=' ' read -ra LIST_DOMAIN_NAME <<< "$domain_name"
+
+        FIRST_DOMAINE_NAME="${LIST_DOMAIN_NAME[0]}"
+
+        prepareNginx "$FIRST_DOMAINE_NAME"
+    done
+
+
     echo "### Starting nginx ... "
     service nginx start
 
@@ -158,24 +165,21 @@ afunc(){
     if [ -e /var/run/nginx.pid ]; then 
         echo "### Nginx started."; 
 
-        ### AND HERE
-        ### AND HERE
-        ### AND HERE
+        for domain_name in "${domain_names[@]}"; do
+            echo "Domaine : $domain_name"
 
-        clearKeys domain1[@]
-        clearKeys domain2[@]
-        clearKeys domain3[@]
-      
-        ### AND HERE
-        ### AND HERE
-        ### AND HERE
-        registerSSL domain1[@]
-        registerSSL domain2[@]
-        registerSSL domain3[@]
+            IFS=' ' read -ra LIST_DOMAIN_NAME <<< "$domain_name"
+
+            FIRST_DOMAINE_NAME="${LIST_DOMAIN_NAME[0]}"
+            
+            clearKeys "$FIRST_DOMAINE_NAME"
+
+            registerSSL "$FIRST_DOMAINE_NAME" "$domain_name"
+            
+        done
 
         echo "### Reloading nginx ..."
         service nginx reload
-
         
         if [ -e /var/run/nginx.pid ]; then 
             echo "### Nginx reloaded."; 
@@ -188,14 +192,10 @@ afunc(){
         
     else 
         
-        echo "### Nginx didnt started."; 
+        echo "### Service Nginx failed to start."; 
         while :; do sleep 12h; done;
     
     fi
-
-    
-    
-
 
 }
 

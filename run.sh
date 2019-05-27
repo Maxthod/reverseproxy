@@ -1,11 +1,11 @@
 #!/bin/bash
 #set -e
-base="/etc/letsencrypt/"
+base="/etc/letsencrypt"
 rsa_key_size=4096
 
 stringToSearch="SSL domain names"
 prefix="server_name"
-confDirectory="/etc/nginx/conf.d/*"
+confDirectory="/etc/nginx/conf.d/*.conf"
 
 prepareNginx () {
     
@@ -91,13 +91,15 @@ registerSSL () {
         esac
 
         # Enable staging mode if needed
-        if [[ -z $staging && $staging == "true" ]]; then staging_arg="--staging"; fi
+        if [[ -z $staging && $staging == "true" ]]; then staging_arg="--staging"; fi        
+        if [[ -z $staging && $staging == "true" ]]; then staging_arg2="--dry-run"; fi
 
 
 
         echo "### Launching certbot ..."
         certbot certonly --webroot -w /var/www/certbot \
             $staging_arg \
+            $staging_arg2 \
             $email_arg \
             $domain_args \
             --rsa-key-size $rsa_key_size \
@@ -158,8 +160,9 @@ afunc(){
 
     while [ ! -e /var/run/nginx.pid ]
     do
-        echo "Nginx didnt started"
-        sleep 5s
+        sleeptime=5s
+        echo "Nginx didnt started. Waiting $sleeptime"
+        sleep $sleeptime
     done
 
     if [ -e /var/run/nginx.pid ]; then 

@@ -1,0 +1,22 @@
+version: '3.7'
+
+networks:
+  nginxnetwork:
+    external: true
+    name: nginxnetwork
+
+volumes:
+  reverseproxy_letsencrypt:
+  reverseproxy_nginx_conf:
+
+services:
+  reverseproxy:
+    image: huguesmcd/reverseproxy
+    environments:
+      - staging: true
+      - EMAIL: email@gmail.com
+    networks:
+      - nginxnetwork
+    volumes:
+      - reverseproxy_nginx_conf:/etc/nginx/conf.d/
+      - reverseproxy_letsencrypt:/etc/letsencrypt

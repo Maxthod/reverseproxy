@@ -7,6 +7,17 @@ stringToSearch="SSL domain names"
 prefix="server_name"
 confDirectory="/etc/nginx/conf.d/*.conf"
 
+email=$EMAIL
+staging=$STAGING
+
+if [ ! -z $staging ] && [ $staging == "true" ]
+then 
+    echo "Dry run"
+else
+    echo "Real run"
+fi
+
+
 prepareNginx () {
     
     declare -a domain=$1
@@ -62,8 +73,6 @@ clearKeys () {
 
 
 registerSSL () {
-    email=$EMAIL
-    staging=$STAGING
 
     local domain=$1
     local domains=$2
@@ -91,7 +100,11 @@ registerSSL () {
         esac
 
         # Enable staging mode if needed
-        if [ ! -z $staging ] && [ $staging == "true" ]; then staging_arg="--staging"; fi        
+        if [ ! -z $staging ] && [ $staging == "true" ]
+        then 
+            echo "Dry run"
+            staging_arg="--staging"
+        fi        
         if [ ! -z $staging ] && [ $staging == "true" ]; then staging_arg2="--dry-run"; fi
 
 

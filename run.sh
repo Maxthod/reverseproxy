@@ -1,5 +1,5 @@
 #!/bin/bash
-#set -e
+set -e
 base="/etc/letsencrypt"
 rsa_key_size=4096
 
@@ -91,9 +91,8 @@ registerSSL () {
         esac
 
         # Enable staging mode if needed
-        if [[ -z $staging && $staging == "true" ]]; then staging_arg="--staging"; fi        
-        if [[ -z $staging && $staging == "true" ]]; then staging_arg2="--dry-run"; fi
-
+        if [ ! -z $staging ] && [ $staging == "true" ]; then staging_arg="--staging"; fi        
+        if [ ! -z $staging ] && [ $staging == "true" ]; then staging_arg2="--dry-run"; fi
 
 
         echo "### Launching certbot ..."

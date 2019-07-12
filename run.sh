@@ -10,13 +10,18 @@ confDirectory="/etc/nginx/conf.d/*.conf"
 email=$EMAIL
 staging=$STAGING
 
-if [ ! -z $staging ] && [ $staging == "true" ]
-then 
-    echo "Dry run"
-else
-    echo "Real run"
-fi
 
+isDryRun () {
+    dryrun=0
+    if [ ! -z $staging ] && [ $staging == "true" ]
+    then 
+        echo "Dry run"
+        dryrun=1
+    else
+        echo "Real run"
+    fi
+    return dryrun
+}
 
 prepareNginx () {
     
@@ -134,6 +139,8 @@ registerSSL () {
 
 afunc(){
 
+    echo "### Is it dry run ..."
+    isDryRun
 
     echo "### Creating directories for certbox ..."
     mkdir -p /var/www/certbot
